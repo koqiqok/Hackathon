@@ -1,0 +1,19 @@
+{
+  "name": "aware-soc-bridge",
+  "version": "1.0.0",
+  "description": "AWARE SOC — Serial bridge for connecting AWARE Mini Arduino to the SOC dashboard",
+  "main": "serial-bridge.js",
+  "scripts": {
+    "start": "node serial-bridge.js",
+    "start:com3": "node serial-bridge.js COM3",
+    "start:ttyacm0": "node serial-bridge.js /dev/ttyACM0"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "ws": "^8.17.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

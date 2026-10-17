@@ -1,0 +1,2281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWARE SOC — Software for Coastguards</title>
+<style>
+  :root {
+    --navy:    #0d2b45;
+    --navy2:   #163859;
+    --teal:    #1a7a8a;
+    --teal2:   #22a0b4;
+    --blue:    #5ab4d6;
+    --baby:    #d6f0f8;
+    --white:   #ffffff;
+    --surface: #f0f8fc;
+    --border:  #c2dde8;
+    --text:    #0d2b45;
+    --muted:   #4a6e82;
+    --red:     #c0392b;
+    --redlt:   #fdecea;
+    --amber:   #e67e22;
+    --amberlt: #fef3e2;
+    --green:   #1a8a4a;
+    --greenlt: #e8f7ed;
+    --yellow:  #f5c518;
+    --radius:  6px;
+    --shadow:  0 2px 8px rgba(13,43,69,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ─────────────────────────────────────────── */
+  #topbar {
+    background: var(--navy);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 52px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  #topbar .logo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  #topbar .logo span { color: var(--teal2); }
+  #topbar .tagline {
+    font-size: 11px;
+    color: #8ab8d0;
+    white-space: nowrap;
+  }
+  #topbar .spacer { flex: 1; }
+  #topbar .hw-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  #topbar .hw-pill:hover { background: rgba(255,255,255,0.18); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #888; display: inline-block; }
+  .dot.connected { background: #2ecc71; }
+  .dot.sim { background: var(--yellow); }
+  .dot.error { background: var(--red); }
+  #clock { font-size: 12px; color: #8ab8d0; min-width: 80px; text-align: right; }
+  #offline-badge {
+    background: var(--amber);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    display: none;
+  }
+  #offline-badge.show { display: block; }
+
+  /* ── SUMMARY BAR ─────────────────────────────────────── */
+  #summarybar {
+    background: var(--navy2);
+    color: var(--white);
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+  .scard {
+    padding: 10px 20px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    min-width: 110px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .scard:hover { background: rgba(255,255,255,0.07); }
+  .scard:last-child { border-right: none; }
+  .scard .val {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .scard .lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #8ab8d0;
+    margin-top: 2px;
+  }
+  .scard.urgent .val { color: #ff7b7b; }
+  .scard.warn .val   { color: var(--yellow); }
+  .scard.ok .val     { color: #5ef5a0; }
+
+  /* ── MAIN LAYOUT ─────────────────────────────────────── */
+  #main {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 52px - 44px);
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL ─────────────────────────────────────── */
+  #left-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--white);
+    overflow: hidden;
+  }
+  #filter-bar {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--baby);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #filter-bar input[type=text] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    background: var(--white);
+    color: var(--text);
+    outline: none;
+  }
+  #filter-bar input[type=text]:focus { border-color: var(--teal); }
+  .filter-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .filter-row select {
+    flex: 1;
+    min-width: 80px;
+    padding: 5px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+    background: var(--white);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .filter-row select:focus { outline: none; border-color: var(--teal); }
+  #request-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .req-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+    position: relative;
+  }
+  .req-item:hover { background: var(--baby); }
+  .req-item.selected { background: var(--baby); border-left: 3px solid var(--teal); padding-left: 11px; }
+  .req-item .row1 { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .req-item .id { font-weight: 600; font-size: 13px; }
+  .req-item .ts { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .req-item .row2 { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .req-item .cat { font-size: 12px; color: var(--muted); }
+  .req-item .loc { font-size: 11px; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .badge.received   { background: #ddeeff; color: #1a4a8a; }
+  .badge.assigned   { background: #ddf0ff; color: #005a99; }
+  .badge.contact-attempted { background: #e8f0ff; color: #2244aa; }
+  .badge.in-contact { background: #d4f0e8; color: #0a6040; }
+  .badge.delivered  { background: var(--greenlt); color: var(--green); }
+  .badge.resolved   { background: #eee; color: #666; }
+  .badge.overdue    { background: var(--redlt); color: var(--red); }
+  /* Category badges — real firmware category names, lowercased for CSS class */
+  .badge.medical-help      { background: #fde8e8; color: #900; }
+  .badge.search-and-rescue { background: #fde8e8; color: #900; }
+  .badge.food-and-water    { background: #e0f0ff; color: #005580; }
+  .badge.shelter           { background: #f0f0ff; color: #440088; }
+  .badge.blocked-road      { background: #fff0e0; color: #a03000; }
+  .badge.other-emergency   { background: #f0f0f0; color: #444; }
+  /* Legacy aliases in case old data exists */
+  .badge.medical { background: #fde8e8; color: #900; }
+  .badge.rescue  { background: #fde8e8; color: #900; }
+  .badge.sim        { background: #fffbe0; color: #7a5a00; border: 1px solid #e0c800; }
+  .overdue-flag { color: var(--red); font-size: 11px; font-weight: 600; }
+
+  /* ── RIGHT PANEL ─────────────────────────────────────── */
+  #right-panel {
+    display: grid;
+    grid-template-rows: 1fr 220px;
+    overflow: hidden;
+  }
+  #map-detail-area {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    overflow: hidden;
+  }
+
+  /* ── MAP ─────────────────────────────────────────────── */
+  #map-container {
+    position: relative;
+    background: #cde8f5;
+    overflow: hidden;
+  }
+  #map-svg {
+    width: 100%;
+    height: 100%;
+  }
+  #map-label {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    background: rgba(13,43,69,0.8);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 10px;
+  }
+  #map-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  #map-legend .leg-row { display: flex; align-items: center; gap: 6px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .btn-map-sim {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-map-sim:hover { background: var(--teal2); }
+
+  /* ── DETAIL PANEL ────────────────────────────────────── */
+  #detail-panel {
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--white);
+    display: flex;
+    flex-direction: column;
+  }
+  #detail-panel .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 24px;
+    text-align: center;
+  }
+  .detail-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--baby);
+  }
+  .detail-header .d-id { font-size: 16px; font-weight: 700; }
+  .detail-header .d-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .detail-header .d-badges { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .detail-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-section h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+  }
+  .info-item .lbl { font-size: 11px; color: var(--muted); }
+  .info-item .val { font-size: 13px; font-weight: 500; }
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .tl-item {
+    display: flex;
+    gap: 10px;
+    position: relative;
+    padding-bottom: 10px;
+  }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-dot-col { display: flex; flex-direction: column; align-items: center; }
+  .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); flex-shrink: 0; margin-top: 3px; }
+  .tl-line { flex: 1; width: 2px; background: var(--border); margin-top: 2px; }
+  .tl-content .tl-ts { font-size: 10px; color: var(--muted); }
+  .tl-content .tl-msg { font-size: 12px; }
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 12px 16px;
+  }
+  .btn {
+    padding: 7px 10px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    text-align: center;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary   { background: var(--teal); color: #fff; }
+  .btn-navy      { background: var(--navy); color: #fff; }
+  .btn-outline   { background: transparent; color: var(--teal); border: 1.5px solid var(--teal); }
+  .btn-danger    { background: var(--red); color: #fff; }
+  .btn-success   { background: var(--green); color: #fff; }
+  .btn-amber     { background: var(--amber); color: #fff; }
+  .btn-full      { grid-column: 1 / -1; }
+  textarea.notes-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 8px;
+    font-size: 12px;
+    resize: vertical;
+    min-height: 54px;
+    font-family: inherit;
+  }
+  textarea.notes-input:focus { outline: none; border-color: var(--teal); }
+  select.assign-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+    background: var(--white);
+    margin-bottom: 6px;
+  }
+
+  /* ── HARDWARE PANEL ──────────────────────────────────── */
+  #hw-panel {
+    border-top: 1px solid var(--border);
+    background: var(--navy2);
+    display: grid;
+    grid-template-columns: 260px 1fr 200px;
+    overflow: hidden;
+  }
+  .hw-section {
+    padding: 10px 14px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hw-section:last-child { border-right: none; }
+  .hw-section h5 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8ab8d0;
+    margin-bottom: 4px;
+  }
+  .hw-state { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13px; }
+  .hw-device { font-size: 11px; color: #8ab8d0; }
+  #hw-log {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 190px;
+    font-size: 11px;
+    font-family: "Consolas", monospace;
+  }
+  .log-line { padding: 1px 0; }
+  .log-line.in  { color: #7bf7b0; }
+  .log-line.out { color: #7bcff7; }
+  .log-line.sys { color: #f7e07b; }
+  .log-line.err { color: #ff8080; }
+  .hw-controls { display: flex; flex-direction: column; gap: 6px; }
+  .hw-controls .btn { font-size: 11px; padding: 5px 8px; }
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .mode-toggle button {
+    flex: 1;
+    background: transparent;
+    color: #8ab8d0;
+    border: none;
+    padding: 5px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .mode-toggle button.active {
+    background: var(--teal2);
+    color: #fff;
+  }
+  .led-row { display: flex; gap: 8px; align-items: center; }
+  .led {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #333;
+    border: 1.5px solid #555;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .led.on-yellow  { background: #f5c518; box-shadow: 0 0 6px #f5c518; border-color: #e0b000; }
+  .led.on-green   { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; border-color: #22aa55; }
+  .led.on-red     { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; border-color: #c0392b; }
+  .led-label { font-size: 11px; color: #8ab8d0; }
+
+  /* ── MODAL ───────────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(13,43,69,0.55);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: 8px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .modal-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h3 { font-size: 15px; }
+  .modal-close {
+    background: none; border: none; color: #8ab8d0;
+    font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .modal-body { padding: 18px; }
+  .modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--teal);
+  }
+
+  /* ── WALKTHROUGH BANNER ──────────────────────────────── */
+  #walkthrough {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 300px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    z-index: 400;
+    overflow: hidden;
+    transition: transform 0.3s, opacity 0.3s;
+  }
+  #walkthrough.hidden { transform: translateY(20px); opacity: 0; pointer-events: none; }
+  #walkthrough .wt-header {
+    background: var(--teal);
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  #walkthrough .wt-close { background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; }
+  #walkthrough .wt-body { padding: 12px 14px; font-size: 13px; line-height: 1.5; }
+  #walkthrough .wt-step { font-size: 10px; color: var(--teal2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.8px; }
+  #walkthrough .wt-nav { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid rgba(255,255,255,0.1); }
+  #walkthrough .wt-nav button {
+    flex: 1; padding: 6px; font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: transparent; color: #fff; border-radius: 4px; cursor: pointer;
+  }
+  #walkthrough .wt-nav button.active { background: var(--teal2); border-color: var(--teal2); }
+
+  /* ── RESPONDER MOBILE OVERLAY ────────────────────────── */
+  #responder-modal .modal { max-width: 380px; }
+
+  /* ── TOAST ───────────────────────────────────────────── */
+  #toast-container {
+    position: fixed;
+    top: 60px;
+    right: 16px;
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .toast {
+    background: var(--navy);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--teal2);
+    animation: slideIn 0.25s ease;
+    max-width: 300px;
+  }
+  .toast.error { border-left-color: var(--red); }
+  .toast.success { border-left-color: var(--green); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── DEADLINE CONFIG BADGE ───────────────────────────── */
+  .deadline-cfg {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #8ab8d0;
+  }
+  .deadline-cfg input[type=number] {
+    width: 50px;
+    padding: 3px 5px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 11px;
+  }
+
+  /* ── OFFLINE QUEUE INDICATOR ─────────────────────────── */
+  #queue-indicator {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    background: var(--amber);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    display: none;
+    cursor: pointer;
+    z-index: 400;
+  }
+  #queue-indicator.show { display: block; }
+
+  /* ── SCROLLBAR ───────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── RESPONSIVE ──────────────────────────────────────── */
+  @media (max-width: 900px) {
+    #main { grid-template-columns: 1fr; }
+    #left-panel { height: 40vh; }
+    #map-detail-area { grid-template-columns: 1fr; }
+    #detail-panel { max-height: 50vh; }
+    #hw-panel { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ─────────────────────────────────────────────── -->
+<div id="topbar">
+  <div class="logo">AWARE <span>SOC</span></div>
+  <div class="tagline">Software for Coastguards Operations</div>
+  <div class="spacer"></div>
+  <div id="offline-badge">● OFFLINE</div>
+  <div class="hw-pill" onclick="toggleHwPanel()">
+    <span class="dot" id="hw-dot"></span>
+    <span id="hw-status-lbl">Simulation Mode</span>
+  </div>
+  <div id="clock">--:--:--</div>
+</div>
+
+<!-- ─── SUMMARY BAR ──────────────────────────────────────────── -->
+<div id="summarybar">
+  <div class="scard urgent" onclick="setFilter('status','all')">
+    <div class="val" id="cnt-active">0</div>
+    <div class="lbl">Active Requests</div>
+  </div>
+  <div class="scard warn" onclick="setFilter('status','received')">
+    <div class="val" id="cnt-unassigned">0</div>
+    <div class="lbl">Unassigned</div>
+  </div>
+  <div class="scard urgent" onclick="setFilter('overdue','true')">
+    <div class="val" id="cnt-overdue">0</div>
+    <div class="lbl">Overdue Follow-ups</div>
+  </div>
+  <div class="scard ok" onclick="setFilter('status','all')">
+    <div class="val" id="cnt-teams">4</div>
+    <div class="lbl">Available Teams</div>
+  </div>
+  <div class="scard" onclick="setFilter('status','resolved')">
+    <div class="val" id="cnt-resolved">0</div>
+    <div class="lbl">Resolved Today</div>
+  </div>
+  <div style="flex:1"></div>
+  <div style="display:flex;align-items:center;padding:0 16px;gap:12px;">
+    <div class="deadline-cfg">
+      <label>Follow-up deadline:</label>
+      <input type="number" id="deadline-minutes" value="30" min="1" max="1440" onchange="updateDeadline()">
+      <span>min</span>
+    </div>
+    <button class="btn btn-primary" onclick="openWalkthrough()" style="font-size:11px;padding:5px 10px;">▶ Walkthrough</button>
+    <button class="btn btn-outline" onclick="openResponderModal()" style="font-size:11px;padding:5px 10px;background:#fff">📱 Responder</button>
+  </div>
+</div>
+
+<!-- ─── MAIN ─────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- ─── LEFT: FILTER + LIST ─────────────────────────────── -->
+  <div id="left-panel">
+    <div id="filter-bar">
+      <input type="text" id="search-input" placeholder="Search by ID, location, or notes…" oninput="renderList()">
+      <div class="filter-row">
+        <select id="f-status" onchange="renderList()">
+          <option value="all">All Statuses</option>
+          <option value="received">Received</option>
+          <option value="assigned">Assigned</option>
+          <option value="contact-attempted">Contact Attempted</option>
+          <option value="in-contact">In Contact</option>
+          <option value="delivered">Delivered</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <select id="f-category" onchange="renderList()">
+          <option value="all">All Categories</option>
+          <option value="MEDICAL HELP">Medical Help</option>
+          <option value="SEARCH AND RESCUE">Search &amp; Rescue</option>
+          <option value="FOOD AND WATER">Food &amp; Water</option>
+          <option value="SHELTER">Shelter</option>
+          <option value="BLOCKED ROAD">Blocked Road</option>
+          <option value="OTHER EMERGENCY">Other Emergency</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <select id="f-team" onchange="renderList()">
+          <option value="all">All Teams</option>
+          <option value="Alpha">Alpha</option>
+          <option value="Bravo">Bravo</option>
+          <option value="Charlie">Charlie</option>
+          <option value="Delta">Delta</option>
+          <option value="Unassigned">Unassigned</option>
+        </select>
+        <select id="f-overdue" onchange="renderList()">
+          <option value="all">All Urgency</option>
+          <option value="true">Overdue Only</option>
+        </select>
+      </div>
+    </div>
+    <div id="request-list"></div>
+  </div>
+
+  <!-- ─── RIGHT: MAP + DETAIL ─────────────────────────────── -->
+  <div id="right-panel">
+    <div id="map-detail-area">
+
+      <!-- MAP -->
+      <div id="map-container">
+        <div id="map-label">⚠ DEMONSTRATION DATA — Simulated coastal area</div>
+        <svg id="map-svg" viewBox="0 0 700 450" preserveAspectRatio="xMidYMid slice">
+          <!-- Ocean background -->
+          <rect width="700" height="450" fill="#a8d8ea"/>
+          <!-- Coastline shape -->
+          <path d="M0,80 Q80,60 150,90 Q200,110 220,80 Q260,40 310,70 Q360,100 400,75 Q450,50 500,80 Q560,115 600,90 Q650,70 700,85 L700,450 L0,450 Z" fill="#c8e6a0"/>
+          <path d="M0,80 Q80,60 150,90 Q200,110 220,80 Q260,40 310,70 Q360,100 400,75 Q450,50 500,80 Q560,115 600,90 Q650,70 700,85" fill="none" stroke="#5a9a5a" stroke-width="1.5"/>
+          <!-- Water features -->
+          <ellipse cx="120" cy="200" rx="60" ry="35" fill="#90c8e0" opacity="0.4"/>
+          <text x="105" y="205" font-size="10" fill="#2a6a8a" font-family="sans-serif">Bay Area</text>
+          <!-- Roads/paths -->
+          <line x1="150" y1="120" x2="580" y2="180" stroke="#e0d090" stroke-width="2.5" opacity="0.8"/>
+          <line x1="300" y1="100" x2="320" y2="350" stroke="#e0d090" stroke-width="2" opacity="0.7"/>
+          <!-- Settlements -->
+          <rect x="130" y="108" width="40" height="25" rx="3" fill="#e8c870" opacity="0.7"/>
+          <text x="133" y="123" font-size="9" fill="#555" font-family="sans-serif">Puerto</text>
+          <text x="133" y="131" font-size="8" fill="#555" font-family="sans-serif">Armuellas</text>
+          <rect x="420" y="118" width="44" height="25" rx="3" fill="#e8c870" opacity="0.7"/>
+          <text x="423" y="133" font-size="9" fill="#555" font-family="sans-serif">Isla Colón</text>
+          <rect x="280" y="130" width="36" height="22" rx="3" fill="#e8c870" opacity="0.7"/>
+          <text x="283" y="145" font-size="9" fill="#555" font-family="sans-serif">Bocas</text>
+          <!-- Incident markers - rendered by JS -->
+          <g id="map-markers"></g>
+        </svg>
+        <button class="btn-map-sim" onclick="simulateNewRequest()">+ Simulate New Request</button>
+        <div id="map-legend">
+          <div class="leg-row"><span class="leg-dot" style="background:#e74c3c"></span> Unassigned / Urgent</div>
+          <div class="leg-row"><span class="leg-dot" style="background:#e67e22"></span> Assigned / In Progress</div>
+          <div class="leg-row"><span class="leg-dot" style="background:#2ecc71"></span> Resolved</div>
+          <div class="leg-row"><span class="leg-dot" style="background:#888"></span> Overdue</div>
+        </div>
+      </div>
+
+      <!-- DETAIL -->
+      <div id="detail-panel">
+        <div class="empty-state" id="detail-empty">
+          Select a request to view details and take action
+        </div>
+        <div id="detail-content" style="display:none; flex-direction:column;">
+          <div class="detail-header">
+            <div class="d-id" id="d-id"></div>
+            <div class="d-meta" id="d-meta"></div>
+            <div class="d-badges" id="d-badges"></div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Incident Information</h4>
+            <div class="info-grid">
+              <div class="info-item"><div class="lbl">Device ID</div><div class="val" id="d-device"></div></div>
+              <div class="info-item"><div class="lbl">Category</div><div class="val" id="d-category"></div></div>
+              <div class="info-item"><div class="lbl">Location</div><div class="val" id="d-location"></div></div>
+              <div class="info-item"><div class="lbl">Assigned Team</div><div class="val" id="d-team"></div></div>
+              <div class="info-item"><div class="lbl">Received</div><div class="val" id="d-received"></div></div>
+              <div class="info-item"><div class="lbl">Next Action By</div><div class="val" id="d-deadline"></div></div>
+              <div class="info-item"><div class="lbl">Device Status</div><div class="val" id="d-fwstatus" style="font-size:12px;color:var(--teal)"></div></div>
+              <div class="info-item"><div class="lbl">Next Valid Command</div><div class="val" id="d-nextcmd" style="font-size:12px;font-family:monospace;font-weight:700"></div></div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Event History</h4>
+            <div class="timeline" id="d-timeline"></div>
+          </div>
+
+          <div class="detail-section" id="d-assign-section">
+            <h4>Assign Team</h4>
+            <select class="assign-select" id="d-assign-select">
+              <option value="">— Select Team —</option>
+              <option value="Alpha">Team Alpha</option>
+              <option value="Bravo">Team Bravo</option>
+              <option value="Charlie">Team Charlie</option>
+              <option value="Delta">Team Delta</option>
+            </select>
+            <button class="btn btn-primary" style="width:100%" onclick="assignTeam()">Assign Team</button>
+          </div>
+
+          <div class="detail-section">
+            <h4>Add Note</h4>
+            <textarea class="notes-input" id="d-note-input" placeholder="Enter field note or observation…"></textarea>
+          </div>
+
+          <div class="action-grid" id="d-actions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HARDWARE PANEL -->
+    <div id="hw-panel">
+      <div class="hw-section">
+        <h5>Hardware Connection</h5>
+        <div class="hw-state">
+          <span class="dot" id="hw-panel-dot"></span>
+          <span id="hw-panel-label">Simulation Mode</span>
+        </div>
+        <div class="hw-device" id="hw-device-label">No device connected</div>
+        <div style="margin-top:8px">
+          <div class="mode-toggle">
+            <button id="btn-mode-sim" class="active" onclick="setMode('sim')">Simulation</button>
+            <button id="btn-mode-hw" onclick="setMode('hw')">Hardware</button>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <h5 style="margin-bottom:4px">Device State</h5>
+          <div class="led-row">
+            <div class="led" id="led-yellow"></div><span class="led-label">Yellow D11</span>
+          </div>
+          <div class="led-row" style="margin-top:4px">
+            <div class="led" id="led-green"></div><span class="led-label">Green D12</span>
+          </div>
+          <div class="led-row" style="margin-top:4px">
+            <div class="led" id="led-red"></div><span class="led-label">Red D13</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-section" style="flex:1">
+        <h5>Serial Log — 9600 baud <small style="color:#557;font-weight:normal;">(technical)</small></h5>
+        <div id="hw-log"></div>
+      </div>
+
+      <div class="hw-section">
+        <h5>Simulate Device <span id="sim-category-label" style="color:var(--teal2);font-weight:600"></span></h5>
+        <div class="hw-controls">
+          <button class="btn btn-outline" style="color:#7bf7b0;border-color:#7bf7b0" onclick="simClick(1)">1 Click — Submit Report</button>
+          <button class="btn btn-outline" style="color:#7bcff7;border-color:#7bcff7" onclick="simClick(2)">2 Clicks — Check Status</button>
+          <button class="btn btn-outline" style="color:#7bcff7;border-color:#7bcff7" onclick="simClick(3)">3 Clicks — Confirm Arrival</button>
+          <button class="btn btn-outline" style="color:#e0c870;border-color:#e0c870" onclick="simClick(4)">4 Clicks — Cycle Category</button>
+          <button class="btn btn-outline" style="color:#ff8080;border-color:#ff8080" onclick="simClick(6)">6 Clicks — FULL RESET</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── WALKTHROUGH PANEL ──────────────────────────────────────── -->
+<div id="walkthrough" class="hidden">
+  <div class="wt-header">
+    90-Second Demo Walkthrough
+    <button class="wt-close" onclick="closeWalkthrough()">×</button>
+  </div>
+  <div class="wt-body">
+    <div class="wt-step" id="wt-step-label">Step 1 of 8</div>
+    <div id="wt-text"></div>
+  </div>
+  <div class="wt-nav">
+    <button onclick="wtPrev()">← Prev</button>
+    <button onclick="wtNext()" class="active">Next →</button>
+  </div>
+</div>
+
+<!-- ─── MODALS ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="responder-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📱 Responder Field Update</h3>
+      <button class="modal-close" onclick="closeResponderModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Select Request</label>
+        <select id="resp-req-select"></select>
+      </div>
+      <div class="form-group">
+        <label>Update Type</label>
+        <select id="resp-update-type">
+          <option value="contact-attempted">Contact Attempted</option>
+          <option value="in-contact">Person Reached (In Contact)</option>
+          <option value="delivered">Assistance Delivered</option>
+          <option value="note">Field Note Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes / Details</label>
+        <textarea id="resp-notes" rows="3" placeholder="Describe situation, assistance provided, or next steps…"></textarea>
+      </div>
+      <div style="background:var(--amberlt);border:1px solid var(--amber);border-radius:6px;padding:8px 10px;font-size:11px;color:#7a3a00;margin-top:4px">
+        ⚡ Offline-capable: updates are queued if connectivity is unavailable and will sync automatically.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeResponderModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitResponderUpdate()">Submit Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="schedule-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Schedule Follow-up</h3>
+      <button class="modal-close" onclick="closeModal('schedule-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Follow-up in (minutes)</label>
+        <input type="number" id="followup-minutes" value="30" min="1">
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="followup-note" rows="2" placeholder="Reason or instructions for follow-up…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('schedule-modal')">Cancel</button>
+      <button class="btn btn-amber" onclick="confirmScheduleFollowup()">Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST CONTAINER ───────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ─── OFFLINE QUEUE INDICATOR ──────────────────────────────── -->
+<div id="queue-indicator" onclick="syncQueue()">
+  ⏳ <span id="queue-count">0</span> update(s) queued — Click to sync
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────── -->
+<!--  APPLICATION LOGIC                                              -->
+<!-- ─────────────────────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── CONSTANTS ──────────────────────────────────────────────────────
+// Derived directly from the AWARE Mini Arduino firmware source.
+const FIRMWARE_PROTOCOL = {
+  baud: 9600,
+  // What each click count means (firmware executeClicks())
+  clicks: {
+    1: 'SUBMIT_REPORT',       // submitReport()
+    2: 'CHECK_STATUS',        // checkStatus()
+    3: 'CONFIRM_ASSISTANCE',  // confirmAssistance() — user reports help arrived
+    4: 'CYCLE_CATEGORY',      // cycleCategory()
+    6: 'FULL_RESET'           // fullReset()
+  },
+  // Commands sent TO device (firmware handleSerial())
+  // R: only accepted when device status == QUEUED  → moves to RECEIVED
+  // A: only accepted when device status == RECEIVED → moves to ACKNOWLEDGED
+  // V: only accepted when device status == HELP_REPORTED → moves to VERIFIED
+  // X: always accepted — fullReset()
+  outgoing: { queued: 'R', received: 'A', help_reported: 'V', reset: 'X' },
+  // Device overdue window (matches OVERDUE_MS = 30000 in firmware)
+  deviceOverdueMs: 30000
+};
+
+// Exact category strings from the firmware categories[] array
+const CATEGORIES = [
+  'MEDICAL HELP',
+  'SEARCH AND RESCUE',
+  'FOOD AND WATER',
+  'SHELTER',
+  'BLOCKED ROAD',
+  'OTHER EMERGENCY'
+];
+
+// Firmware ReportStatus enum — used to track what command is valid to send next
+// NO_REPORT → QUEUED → RECEIVED → ACKNOWLEDGED → HELP_REPORTED → VERIFIED
+const FW_STATUS = {
+  NO_REPORT:   'NO_REPORT',
+  QUEUED:      'QUEUED',
+  RECEIVED:    'RECEIVED',
+  ACKNOWLEDGED:'ACKNOWLEDGED',
+  HELP_REPORTED:'HELP_REPORTED',
+  VERIFIED:    'VERIFIED'
+};
+
+const TEAMS        = ['Alpha','Bravo','Charlie','Delta'];
+const STATUS_ORDER = ['received','assigned','contact-attempted','in-contact','delivered','resolved'];
+
+const DEMO_LOCATIONS = [
+  'Puerto Armuellas — Sector 3','Isla Colón — North Shore','Bocas Town — Marina',
+  'Changuinola — Riverside','Almirante — Dock 7','Punta Robalo','Bahía Azul',
+  'San San Pond Sak','Laguna de Chiriquí — Zone B'
+];
+
+// ── STATE ──────────────────────────────────────────────────────────
+let state = {
+  requests:         {},   // id -> request object
+  selectedId:       null,
+  mode:             'sim', // 'sim' | 'hw'
+  hwConnected:      false,
+  hwPort:           null,
+  hwReader:         null,
+  hwMode:           null,  // 'webserial' | 'wsbridge'
+  hwWs:             null,
+  currentCategory:  0,     // mirrors selectedCategory on device (4-click cycles)
+  fwStatus:         FW_STATUS.NO_REPORT, // mirrors device ReportStatus enum
+  fwReportId:       0,     // mirrors device reportID
+  deadlineMinutes:  1,     // default 1 min for hackathon demo (device overdue = 30s)
+  offlineQueue:     [],
+  isOnline:         true,
+  seenMessages:     new Set(), // dedup by reportID
+  walkStep:         0
+};
+
+// ── PERSISTENCE ────────────────────────────────────────────────────
+function persist() {
+  try {
+    const save = {
+      requests:        state.requests,
+      offlineQueue:    state.offlineQueue,
+      seenMessages:    [...state.seenMessages],
+      currentCategory: state.currentCategory,
+      deadlineMinutes: state.deadlineMinutes
+    };
+    localStorage.setItem('aware_soc_v2', JSON.stringify(save));
+  } catch(e) {}
+}
+
+function restore() {
+  try {
+    const raw = localStorage.getItem('aware_soc_v2');
+    if (!raw) return;
+    const save = JSON.parse(raw);
+    state.requests        = save.requests        || {};
+    state.offlineQueue    = save.offlineQueue    || [];
+    state.seenMessages    = new Set(save.seenMessages || []);
+    state.currentCategory = save.currentCategory || 0;
+    state.deadlineMinutes = save.deadlineMinutes || 30;
+    document.getElementById('deadline-minutes').value = state.deadlineMinutes;
+  } catch(e) {}
+}
+
+// ── ID GENERATION ──────────────────────────────────────────────────
+function genId() {
+  return 'AWR-' + Date.now().toString(36).toUpperCase().slice(-5);
+}
+
+function msgHash(deviceId, category, ts) {
+  return `${deviceId}:${category}:${Math.floor(ts/10000)}`; // 10s window dedup
+}
+
+// ── REQUEST MODEL ──────────────────────────────────────────────────
+function createRequest(opts = {}) {
+  const now = Date.now();
+  const id  = opts.id || genId();
+  return {
+    id,
+    deviceId:    opts.deviceId  || ('AWARE-' + Math.random().toString(36).slice(2,6).toUpperCase()),
+    category:    opts.category  || CATEGORIES[state.currentCategory],
+    location:    opts.location  || DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)],
+    status:      'received',
+    fwStatus:    FW_STATUS.QUEUED,  // firmware status at time of creation
+    fwReportId:  opts.fwReportId || 0,
+    team:        null,
+    notes:       [],
+    history:     [{ts: now, event: 'received', msg: `Request received from wearable — ${opts.category || CATEGORIES[state.currentCategory]}`}],
+    createdAt:   now,
+    updatedAt:   now,
+    deadline:    now + state.deadlineMinutes * 60000,
+    isSimulated: opts.isSimulated !== false,
+    mapX:        opts.mapX || (80 + Math.random() * 540),
+    mapY:        opts.mapY || (90 + Math.random() * 280)
+  };
+}
+
+// ── STATUS MACHINE ─────────────────────────────────────────────────
+function advanceStatus(req, newStatus, note, actor) {
+  const now = Date.now();
+  req.status    = newStatus;
+  req.updatedAt = now;
+  req.deadline  = now + state.deadlineMinutes * 60000;
+  req.history.push({
+    ts: now,
+    event: newStatus,
+    msg: note || statusLabel(newStatus),
+    actor: actor || 'Operator'
+  });
+  if (note) {
+    req.notes.push({ ts: now, text: note, actor: actor || 'Operator' });
+  }
+}
+
+function statusLabel(s) {
+  return {
+    received:            'Received',
+    assigned:            'Team assigned',
+    'contact-attempted': 'Contact attempted',
+    'in-contact':        'Person reached',
+    delivered:           'Assistance delivered',
+    resolved:            'Resolved'
+  }[s] || s;
+}
+
+function isOverdue(req) {
+  if (req.status === 'resolved' || req.status === 'delivered') return false;
+  return Date.now() > req.deadline;
+}
+
+// Map firmware ReportStatus → which SOC command is valid to send next
+// Follows the exact switch() in handleSerial() of the firmware
+function nextValidCommand(fwStatus) {
+  switch(fwStatus) {
+    case FW_STATUS.QUEUED:        return 'R'; // → RECEIVED
+    case FW_STATUS.RECEIVED:      return 'A'; // → ACKNOWLEDGED
+    case FW_STATUS.HELP_REPORTED: return 'V'; // → VERIFIED
+    default:                      return null;
+  }
+}
+
+// ── COUNTS ─────────────────────────────────────────────────────────
+function updateCounts() {
+  const reqs = Object.values(state.requests);
+  const active   = reqs.filter(r => r.status !== 'resolved');
+  const unassign = reqs.filter(r => r.status === 'received');
+  const overdue  = reqs.filter(r => isOverdue(r));
+  const resolved = reqs.filter(r => r.status === 'resolved');
+  document.getElementById('cnt-active').textContent    = active.length;
+  document.getElementById('cnt-unassigned').textContent = unassign.length;
+  document.getElementById('cnt-overdue').textContent    = overdue.length;
+  document.getElementById('cnt-resolved').textContent   = resolved.length;
+  if (overdue.length > 0) {
+    document.getElementById('cnt-overdue').style.color = '#ff7b7b';
+  }
+}
+
+// ── FILTER ─────────────────────────────────────────────────────────
+function setFilter(key, val) {
+  const el = {
+    status:   document.getElementById('f-status'),
+    overdue:  document.getElementById('f-overdue'),
+    category: document.getElementById('f-category'),
+    team:     document.getElementById('f-team')
+  }[key];
+  if (el) el.value = val;
+  renderList();
+}
+
+function getFilters() {
+  return {
+    status:   document.getElementById('f-status').value,
+    category: document.getElementById('f-category').value,
+    team:     document.getElementById('f-team').value,
+    overdue:  document.getElementById('f-overdue').value,
+    search:   document.getElementById('search-input').value.toLowerCase()
+  };
+}
+
+function matchesFilter(req, f) {
+  if (f.status !== 'all' && req.status !== f.status) return false;
+  if (f.category !== 'all' && req.category !== f.category) return false;
+  if (f.team !== 'all') {
+    if (f.team === 'Unassigned' && req.team) return false;
+    if (f.team !== 'Unassigned' && req.team !== f.team) return false;
+  }
+  if (f.overdue === 'true' && !isOverdue(req)) return false;
+  if (f.search) {
+    const haystack = `${req.id} ${req.location} ${req.category} ${req.deviceId} ${req.notes.map(n=>n.text).join(' ')}`.toLowerCase();
+    if (!haystack.includes(f.search)) return false;
+  }
+  return true;
+}
+
+// ── RENDER LIST ────────────────────────────────────────────────────
+function renderList() {
+  const f    = getFilters();
+  const list = document.getElementById('request-list');
+  list.innerHTML = '';
+
+  const reqs = Object.values(state.requests)
+    .filter(r => matchesFilter(r, f))
+    .sort((a,b) => {
+      if (isOverdue(a) && !isOverdue(b)) return -1;
+      if (!isOverdue(a) && isOverdue(b)) return 1;
+      return b.createdAt - a.createdAt;
+    });
+
+  if (!reqs.length) {
+    list.innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px;text-align:center">No requests match current filters</div>';
+    return;
+  }
+
+  reqs.forEach(req => {
+    const div = document.createElement('div');
+    div.className = 'req-item' + (req.id === state.selectedId ? ' selected' : '');
+    div.onclick = () => selectRequest(req.id);
+    const overdue = isOverdue(req);
+    const catBadge = req.category.toLowerCase().replace(/\s+/g, '-');
+    const age = formatAge(req.createdAt);
+    div.innerHTML = `
+      <div class="row1">
+        <span class="id">${req.id}</span>
+        <span class="ts">${age}</span>
+      </div>
+      <div class="row2">
+        <span>
+          <span class="badge ${statusCls(req.status)}">${statusLabel(req.status)}</span>
+          <span class="badge ${catBadge}" style="margin-left:3px">${req.category}</span>
+          ${req.isSimulated ? '<span class="badge sim">SIM</span>' : ''}
+          ${overdue ? '<span class="overdue-flag" style="margin-left:4px">⚠ OVERDUE</span>' : ''}
+        </span>
+        <span class="loc">${req.team || '—'}</span>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  updateCounts();
+  renderMap();
+}
+
+function statusCls(s) {
+  return {
+    received:            'received',
+    assigned:            'assigned',
+    'contact-attempted': 'contact-attempted',
+    'in-contact':        'in-contact',
+    delivered:           'delivered',
+    resolved:            'resolved'
+  }[s] || 'received';
+}
+
+function formatAge(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60)  return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  return `${Math.floor(diff/3600)}h ${Math.floor((diff%3600)/60)}m ago`;
+}
+
+// ── MAP ────────────────────────────────────────────────────────────
+function renderMap() {
+  const g = document.getElementById('map-markers');
+  g.innerHTML = '';
+  Object.values(state.requests).forEach(req => {
+    const color = req.status === 'resolved' ? '#2ecc71'
+                : isOverdue(req)            ? '#888'
+                : req.status === 'received' ? '#e74c3c'
+                : '#e67e22';
+    const isSelected = req.id === state.selectedId;
+    const r = isSelected ? 10 : 7;
+    const marker = `
+      <g style="cursor:pointer" onclick="selectRequest('${req.id}')">
+        <circle cx="${req.mapX}" cy="${req.mapY}" r="${r+3}" fill="${color}" opacity="0.25"/>
+        <circle cx="${req.mapX}" cy="${req.mapY}" r="${r}" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+        <text x="${req.mapX}" y="${req.mapY+4}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff" font-family="sans-serif">${req.category[0]}</text>
+        ${isSelected ? `<circle cx="${req.mapX}" cy="${req.mapY}" r="${r+5}" fill="none" stroke="${color}" stroke-width="2" opacity="0.6"/>` : ''}
+      </g>`;
+    g.insertAdjacentHTML('beforeend', marker);
+  });
+}
+
+// ── SELECT REQUEST ─────────────────────────────────────────────────
+function selectRequest(id) {
+  state.selectedId = id;
+  renderList();
+  renderDetail();
+}
+
+function renderDetail() {
+  const req = state.requests[state.selectedId];
+  const empty   = document.getElementById('detail-empty');
+  const content = document.getElementById('detail-content');
+  if (!req) {
+    empty.style.display   = 'flex';
+    content.style.display = 'none';
+    return;
+  }
+  empty.style.display   = 'none';
+  content.style.display = 'flex';
+
+  const overdue = isOverdue(req);
+  document.getElementById('d-id').textContent     = req.id;
+  document.getElementById('d-meta').textContent   = `${req.location} · ${new Date(req.createdAt).toLocaleTimeString()}`;
+  document.getElementById('d-device').textContent   = req.deviceId;
+  document.getElementById('d-category').textContent = req.category;
+  document.getElementById('d-location').textContent = req.location;
+  document.getElementById('d-team').textContent      = req.team || 'Unassigned';
+  document.getElementById('d-received').textContent  = new Date(req.createdAt).toLocaleTimeString();
+  document.getElementById('d-deadline').textContent  = overdue
+    ? '⚠ OVERDUE'
+    : new Date(req.deadline).toLocaleTimeString();
+  const fw = req.fwStatus || FW_STATUS.QUEUED;
+  const nextCmd = nextValidCommand(fw);
+  document.getElementById('d-fwstatus').textContent = fw;
+  const ncEl = document.getElementById('d-nextcmd');
+  ncEl.textContent = nextCmd ? `"${nextCmd}"` : '— none —';
+  ncEl.style.color = nextCmd ? 'var(--teal2)' : 'var(--muted)';
+
+  const badges = document.getElementById('d-badges');
+  badges.innerHTML = `
+    <span class="badge ${statusCls(req.status)}">${statusLabel(req.status)}</span>
+    <span class="badge ${req.category.toLowerCase().replace(/\s+/g,'-')}">${req.category}</span>
+    ${overdue ? '<span class="badge overdue">⚠ Overdue</span>' : ''}
+    ${req.isSimulated ? '<span class="badge sim">SIMULATED DATA</span>' : ''}
+  `;
+
+  // Timeline
+  const tl = document.getElementById('d-timeline');
+  tl.innerHTML = '';
+  const hist = [...req.history].reverse();
+  hist.forEach((h, i) => {
+    const isLast = i === hist.length - 1;
+    tl.insertAdjacentHTML('beforeend', `
+      <div class="tl-item">
+        <div class="tl-dot-col">
+          <div class="tl-dot" style="${h.event==='received'?'background:var(--teal2)':''}"></div>
+          ${!isLast ? '<div class="tl-line"></div>' : ''}
+        </div>
+        <div class="tl-content">
+          <div class="tl-ts">${new Date(h.ts).toLocaleTimeString()} ${h.actor ? '· ' + h.actor : ''}</div>
+          <div class="tl-msg">${h.msg}</div>
+        </div>
+      </div>`);
+  });
+
+  // Show/hide assign section
+  document.getElementById('d-assign-section').style.display =
+    req.status === 'resolved' ? 'none' : '';
+
+  // Action buttons
+  renderActions(req);
+}
+
+function renderActions(req) {
+  const grid = document.getElementById('d-actions');
+  grid.innerHTML = '';
+  const add = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.className = `btn ${cls}`;
+    b.textContent = label;
+    b.onclick = fn;
+    grid.appendChild(b);
+  };
+
+  if (req.status === 'resolved') {
+    add('Reopen Case', 'btn-outline btn-full', () => doAction('reopen'));
+    return;
+  }
+
+  add('Acknowledge Receipt', 'btn-navy',   () => doAction('acknowledge'));
+  add('Record Contact Attempt', 'btn-primary', () => doAction('contact-attempted'));
+  add('Mark Person Reached',    'btn-primary', () => doAction('in-contact'));
+  add('Confirm Assistance Delivered', 'btn-success', () => doAction('delivered'));
+  add('Schedule Follow-up',    'btn-amber',   () => openScheduleModal());
+  add('Add Note & Save',        'btn-outline', () => doAction('note'));
+  add('Resolve Case',           'btn-success btn-full', () => doAction('resolve'));
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
+let scheduleTargetId = null;
+
+function doAction(action) {
+  const req  = state.requests[state.selectedId];
+  if (!req) return;
+  const note = document.getElementById('d-note-input').value.trim();
+
+  const sendCmd = (cmd) => {
+    sendToDevice(cmd);
+    logHw(`→ Sent command: ${cmd}`, 'out');
+  };
+
+  const queueOrApply = (fn) => {
+    if (!state.isOnline) {
+      state.offlineQueue.push({ reqId: req.id, action, note, ts: Date.now() });
+      showQueueIndicator();
+      toast('Update queued (offline mode)', 'warn');
+    } else {
+      fn();
+    }
+    persist();
+  };
+
+  switch(action) {
+    case 'acknowledge':
+      // Send 'R' to device — valid only when device is QUEUED (just submitted a report).
+      // The firmware will print "SYSTEM RECEIPT RECORDED" and advance to RECEIVED.
+      queueOrApply(() => {
+        const cmd = nextValidCommand(req.fwStatus);
+        if (cmd) {
+          sendCmd(cmd);
+          req.fwStatus = advanceFwStatus(req.fwStatus);
+        }
+        advanceStatus(req, req.status, note || 'Receipt acknowledged — R sent to device');
+        req.history.push({ ts: Date.now(), event: 'acknowledged', msg: `Command ${cmd || '(none valid)'} sent to device` });
+        req.updatedAt = Date.now();
+        // Yellow stays on (firmware: YELLOW_LED = status >= RECEIVED)
+        setLeds(true, false, false);
+        toast(`${req.id}: Acknowledged — device LED: Yellow`, 'info');
+      });
+      break;
+
+    case 'contact-attempted':
+      queueOrApply(() => {
+        advanceStatus(req, 'contact-attempted', note || 'Contact attempt recorded');
+        toast(`${req.id}: Contact attempted`, 'info');
+      });
+      break;
+
+    case 'in-contact':
+      // Send 'A' to device — valid when device is RECEIVED.
+      // Firmware moves to ACKNOWLEDGED → Green LED on.
+      queueOrApply(() => {
+        const cmd = nextValidCommand(req.fwStatus);
+        if (cmd === 'A') {
+          sendCmd(cmd);
+          req.fwStatus = advanceFwStatus(req.fwStatus);
+        }
+        advanceStatus(req, 'in-contact', note || 'Person reached — A sent to device');
+        // Green LED: firmware ACKNOWLEDGED state
+        setLeds(false, true, false);
+        setTimeout(() => setLeds(false, false, false), 3000);
+        toast(`${req.id}: Person reached — device LED: Green`, 'success');
+      });
+      break;
+
+    case 'delivered':
+      // Send 'V' to device — valid when device is HELP_REPORTED (3-click from user).
+      // Firmware moves to VERIFIED → Green LED remains on.
+      queueOrApply(() => {
+        const cmd = nextValidCommand(req.fwStatus);
+        if (cmd === 'V') {
+          sendCmd(cmd);
+          req.fwStatus = advanceFwStatus(req.fwStatus);
+        } else if (req.fwStatus !== FW_STATUS.VERIFIED) {
+          // Device hasn't sent 3-click yet — log it but still advance SOC status
+          logHw(`Note: device fwStatus=${req.fwStatus}, V not sent yet (awaiting 3-click from user)`, 'sys');
+        }
+        advanceStatus(req, 'delivered', note || 'Assistance confirmed delivered');
+        setLeds(false, true, false);
+        setTimeout(() => setLeds(false, false, false), 3000);
+        toast(`${req.id}: Assistance delivered`, 'success');
+      });
+      break;
+
+    case 'resolve':
+      queueOrApply(() => {
+        advanceStatus(req, 'resolved', note || 'Case resolved');
+        toast(`${req.id}: Resolved`, 'success');
+      });
+      break;
+
+    case 'reopen':
+      advanceStatus(req, 'received', 'Case reopened');
+      req.fwStatus = FW_STATUS.QUEUED; // treat as freshly queued
+      toast(`${req.id}: Reopened`, 'info');
+      persist();
+      break;
+
+    case 'note':
+      if (!note) { toast('Enter a note first', 'error'); return; }
+      req.history.push({ ts: Date.now(), event: 'note', msg: note, actor: 'Operator' });
+      req.notes.push({ ts: Date.now(), text: note, actor: 'Operator' });
+      req.updatedAt = Date.now();
+      document.getElementById('d-note-input').value = '';
+      toast('Note saved', 'success');
+      persist();
+      break;
+  }
+
+  renderDetail();
+  renderList();
+}
+
+function assignTeam() {
+  const req  = state.requests[state.selectedId];
+  if (!req) return;
+  const team = document.getElementById('d-assign-select').value;
+  if (!team) { toast('Select a team first', 'error'); return; }
+  req.team = team;
+  advanceStatus(req, 'assigned', `Assigned to Team ${team}`);
+  persist();
+  renderDetail();
+  renderList();
+  toast(`${req.id} assigned to Team ${team}`, 'success');
+}
+
+// ── FOLLOW-UP ──────────────────────────────────────────────────────
+function openScheduleModal() {
+  if (!state.selectedId) return;
+  scheduleTargetId = state.selectedId;
+  document.getElementById('followup-minutes').value = state.deadlineMinutes;
+  document.getElementById('followup-note').value = '';
+  document.getElementById('schedule-modal').classList.add('open');
+}
+
+function confirmScheduleFollowup() {
+  const req = state.requests[scheduleTargetId];
+  if (!req) { closeModal('schedule-modal'); return; }
+  const mins = parseInt(document.getElementById('followup-minutes').value) || 30;
+  const note = document.getElementById('followup-note').value.trim();
+  req.deadline  = Date.now() + mins * 60000;
+  req.updatedAt = Date.now();
+  req.history.push({
+    ts: Date.now(),
+    event: 'follow-up-scheduled',
+    msg: `Follow-up scheduled in ${mins} min${note ? ': ' + note : ''}`,
+    actor: 'Operator'
+  });
+  persist();
+  renderDetail();
+  renderList();
+  closeModal('schedule-modal');
+  toast(`Follow-up scheduled for ${mins} min`, 'success');
+}
+
+// ── DEADLINE CONFIG ────────────────────────────────────────────────
+function updateDeadline() {
+  const v = parseInt(document.getElementById('deadline-minutes').value) || 30;
+  state.deadlineMinutes = v;
+  persist();
+}
+
+// ── HARDWARE PROTOCOL ──────────────────────────────────────────────
+async function setMode(mode) {
+  state.mode = mode;
+  document.getElementById('btn-mode-sim').classList.toggle('active', mode === 'sim');
+  document.getElementById('btn-mode-hw').classList.toggle('active', mode === 'hw');
+  if (mode === 'hw') {
+    await connectHardware();
+  } else {
+    disconnectHardware();
+    updateHwUi(false);
+  }
+}
+
+async function connectHardware() {
+  // Try Web Serial first (Chrome/Edge), fall back to WebSocket bridge
+  if ('serial' in navigator) {
+    try {
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: FIRMWARE_PROTOCOL.baud });
+      state.hwPort = port;
+      state.hwConnected = true;
+      state.hwMode = 'webserial';
+      updateHwUi(true);
+      logHw(`Web Serial connected at ${FIRMWARE_PROTOCOL.baud} baud`, 'sys');
+      toast('AWARE device connected (Web Serial)', 'success');
+      readSerialLoop(port);
+      return;
+    } catch(e) {
+      logHw('Web Serial failed: ' + e.message + ' — trying WebSocket bridge…', 'sys');
+    }
+  } else {
+    logHw('Web Serial not available — trying WebSocket bridge on ws://localhost:8765…', 'sys');
+  }
+  // Try Node.js serial-bridge.js WebSocket fallback
+  connectWsBridge();
+}
+
+function connectWsBridge() {
+  try {
+    const ws = new WebSocket('ws://localhost:8765');
+    state.hwWs = ws;
+    ws.onopen = () => {
+      state.hwConnected = true;
+      state.hwMode = 'wsbridge';
+      updateHwUi(true);
+      logHw('Connected via serial-bridge.js WebSocket', 'sys');
+      toast('AWARE device connected (bridge)', 'success');
+    };
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'serial_data') {
+          logHw(`← ${msg.data}`, 'in');
+          handleSerialLine(msg.data);
+        } else if (msg.type === 'bridge_status') {
+          logHw(`Bridge: ${msg.connected ? 'device connected on ' + msg.port : 'no device'}`, 'sys');
+          document.getElementById('hw-device-label').textContent =
+            msg.connected ? `AWARE Mini — ${msg.port}` : 'Bridge running — no device';
+        }
+      } catch(e) {}
+    };
+    ws.onerror = () => {
+      logHw('WebSocket bridge not reachable. Run: node serial-bridge.js', 'err');
+      toast('No bridge — run: node serial-bridge.js', 'error');
+      state.hwConnected = false;
+      state.hwMode = null;
+      updateHwUi(false);
+    };
+    ws.onclose = () => {
+      if (state.hwConnected) {
+        state.hwConnected = false;
+        updateHwUi(false);
+        logHw('Bridge disconnected', 'sys');
+      }
+    };
+  } catch(e) {
+    logHw('Bridge connection failed: ' + e.message, 'err');
+    setMode('sim');
+  }
+}
+
+function disconnectHardware() {
+  if (state.hwPort) {
+    try { state.hwPort.close(); } catch(e) {}
+    state.hwPort      = null;
+  }
+  if (state.hwWs) {
+    try { state.hwWs.close(); } catch(e) {}
+    state.hwWs = null;
+  }
+  state.hwConnected = false;
+  state.hwMode = null;
+}
+
+async function readSerialLoop(port) {
+  const decoder = new TextDecoderStream();
+  port.readable.pipeTo(decoder.writable);
+  const reader = decoder.readable.getReader();
+  state.hwReader = reader;
+  let buf = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      lines.forEach(line => handleSerialLine(line.trim()));
+    }
+  } catch(e) {
+    logHw('Serial read error: ' + e.message, 'err');
+    state.hwConnected = false;
+    updateHwUi(false);
+  }
+}
+
+// Serial parser state — the firmware prints multi-line blocks, not single tokens.
+// We accumulate context across lines within a block.
+let _serial = {
+  inNewReport:  false,
+  pendingId:    null,
+  pendingCat:   null,
+  pendingClicks:null
+};
+
+function handleSerialLine(line) {
+  if (!line) return;
+  logHw(`← ${line}`, 'in');
+
+  // ── NEW REPORT block ──────────────────────────────────────────────
+  // Firmware submitReport() prints:
+  //   "NEW AWARE REPORT"
+  //   "Report ID: N"
+  //   "Emergency: CATEGORY STRING"
+  //   "Status: QUEUED LOCALLY"
+  if (line === 'NEW AWARE REPORT') {
+    _serial.inNewReport = true;
+    _serial.pendingId   = null;
+    _serial.pendingCat  = null;
+    return;
+  }
+  if (_serial.inNewReport) {
+    if (line.startsWith('Report ID:')) {
+      _serial.pendingId = parseInt(line.replace('Report ID:', '').trim()) || 0;
+      return;
+    }
+    if (line.startsWith('Emergency:')) {
+      _serial.pendingCat = line.replace('Emergency:', '').trim();
+      return;
+    }
+    if (line === 'Status: QUEUED LOCALLY') {
+      _serial.inNewReport = false;
+      handleNewReport(_serial.pendingCat || CATEGORIES[state.currentCategory], false, _serial.pendingId);
+      return;
+    }
+    // Ignore separator lines (==== etc)
+    return;
+  }
+
+  // ── CATEGORY CYCLE ────────────────────────────────────────────────
+  // Firmware printCategory() prints: "SELECTED CATEGORY: SEARCH AND RESCUE"
+  if (line.startsWith('SELECTED CATEGORY:')) {
+    const cat = line.replace('SELECTED CATEGORY:', '').trim();
+    const idx = CATEGORIES.indexOf(cat);
+    if (idx !== -1) state.currentCategory = idx;
+    updateSimCategoryLabel();
+    logHw(`Category → ${cat}`, 'sys');
+    toast(`Category: ${cat}`, 'info');
+    setLeds(true, false, false);
+    setTimeout(() => setLeds(false, false, false), 600);
+    return;
+  }
+
+  // ── CONFIRM ASSISTANCE (3-click) ──────────────────────────────────
+  // Firmware confirmAssistance() prints: "ASSISTANCE ARRIVAL REPORTED"
+  if (line === 'ASSISTANCE ARRIVAL REPORTED') {
+    handleArrivedReport(false);
+    return;
+  }
+
+  // ── FULL RESET (6-click) ──────────────────────────────────────────
+  // Firmware fullReset() prints: "AWARE FULL RESET"
+  if (line === 'AWARE FULL RESET') {
+    handleFullReset(false);
+    return;
+  }
+
+  // ── ACTIVE REPORT EXISTS (1-click when already have report) ───────
+  // Firmware prints this when submitReport() blocked by existing report
+  if (line === 'ACTIVE REPORT EXISTS') {
+    toast('Device: active report already exists (use 2 clicks to check status)', 'info');
+    return;
+  }
+
+  // ── OVERDUE ALERT ─────────────────────────────────────────────────
+  // Firmware updateOverdueAlert() prints: "!!! AWARE OVERDUE ALERT !!!"
+  if (line.includes('AWARE OVERDUE ALERT')) {
+    // Find the most recent QUEUED/RECEIVED/ACKNOWLEDGED request and flag it
+    const candidate = Object.values(state.requests)
+      .filter(r => r.status !== 'resolved' && r.status !== 'delivered')
+      .sort((a,b) => b.createdAt - a.createdAt)[0];
+    if (candidate) {
+      candidate.deadline = Date.now() - 1; // force overdue immediately
+      candidate.history.push({ ts: Date.now(), event: 'overdue-alert', msg: '⚠ Device overdue alert received' });
+      persist();
+      renderList();
+      renderDetail();
+    }
+    setLeds(false, false, true); // Red blinks for overdue (mirrors firmware)
+    toast('⚠ DEVICE OVERDUE ALERT', 'error');
+    return;
+  }
+
+  // ── COMMAND ACKNOWLEDGMENTS ───────────────────────────────────────
+  if (line === 'SYSTEM RECEIPT RECORDED') {
+    logHw('Device confirmed: R received → status RECEIVED', 'sys');
+    return;
+  }
+  if (line === 'RESPONDER ACKNOWLEDGED') {
+    logHw('Device confirmed: A received → status ACKNOWLEDGED', 'sys');
+    // Green LED on (firmware: GREEN_LED = status >= ACKNOWLEDGED)
+    setLeds(true, true, false);
+    setTimeout(() => setLeds(false, false, false), 2000);
+    return;
+  }
+  if (line === 'ASSISTANCE VERIFIED') {
+    logHw('Device confirmed: V received → status VERIFIED', 'sys');
+    setLeds(false, true, false);
+    setTimeout(() => setLeds(false, false, false), 2000);
+    return;
+  }
+
+  // ── CLICKS LINE (fallback — firmware prints "Detected clicks: N") ─
+  const clicksMatch = line.match(/^Detected clicks:\s*(\d)$/);
+  if (clicksMatch) {
+    const n = parseInt(clicksMatch[1]);
+    // Only act on clicks that don't already produce a named event above
+    // (4-click and 2-click don't emit "NEW AWARE REPORT" etc.)
+    if (n === 2) handleStatusCheck();
+    if (n === 4) {
+      state.currentCategory = (state.currentCategory + 1) % CATEGORIES.length;
+      updateSimCategoryLabel();
+    }
+    return;
+  }
+}
+
+function sendToDevice(cmd) {
+  if (!state.hwConnected) return;
+  if (state.hwMode === 'webserial' && state.hwPort) {
+    const encoder = new TextEncoder();
+    const writer  = state.hwPort.writable.getWriter();
+    writer.write(encoder.encode(cmd + '\n'));
+    writer.releaseLock();
+  } else if (state.hwMode === 'wsbridge' && state.hwWs && state.hwWs.readyState === 1) {
+    state.hwWs.send(cmd);
+  }
+}
+
+function updateHwUi(connected) {
+  const dot   = document.getElementById('hw-dot');
+  const pdot  = document.getElementById('hw-panel-dot');
+  const lbl   = document.getElementById('hw-status-lbl');
+  const plbl  = document.getElementById('hw-panel-label');
+  const dlbl  = document.getElementById('hw-device-label');
+  if (connected) {
+    dot.className  = 'dot connected';
+    pdot.className = 'dot connected';
+    lbl.textContent  = 'Hardware Connected';
+    plbl.textContent = 'Hardware Connected';
+    dlbl.textContent = 'AWARE Mini — Arduino Uno R3';
+  } else if (state.mode === 'sim') {
+    dot.className  = 'dot sim';
+    pdot.className = 'dot sim';
+    lbl.textContent  = 'Simulation Mode';
+    plbl.textContent = 'Simulation Mode';
+    dlbl.textContent = 'No device connected';
+  } else {
+    dot.className  = 'dot error';
+    pdot.className = 'dot error';
+    lbl.textContent  = 'Not Connected';
+    plbl.textContent = 'Not Connected';
+    dlbl.textContent = 'No device found';
+  }
+}
+
+// ── DEVICE EVENT HANDLER (simulation path — mirrors firmware executeClicks) ────
+function handleDeviceEvent(clicks, category, isSimulated) {
+  logHw(`[SIM] ${clicks} click(s) → ${FIRMWARE_PROTOCOL.clicks[clicks] || 'unknown'}`, 'sys');
+  switch(clicks) {
+    case 1: handleNewReport(category, isSimulated, null); break;
+    case 2: handleStatusCheck(); break;
+    case 3: handleArrivedReport(isSimulated); break;
+    case 4:
+      state.currentCategory = (state.currentCategory + 1) % CATEGORIES.length;
+      updateSimCategoryLabel();
+      logHw(`Category → ${CATEGORIES[state.currentCategory]}`, 'sys');
+      toast(`Category: ${CATEGORIES[state.currentCategory]}`, 'info');
+      setLeds(true, false, false);
+      setTimeout(() => setLeds(false, false, false), 600);
+      break;
+    case 6: handleFullReset(isSimulated); break;
+  }
+}
+
+// handleNewReport: called both from simulation and from real serial parser.
+// fwReportId is the Report ID from the device (parsed from serial), or null for sim.
+function handleNewReport(category, isSimulated, fwReportId) {
+  const cat = category || CATEGORIES[state.currentCategory];
+
+  // Dedup by firmware report ID when available; otherwise by category+timestamp window
+  const dedupKey = fwReportId != null
+    ? `fwid:${fwReportId}`
+    : `cat:${cat}:${Math.floor(Date.now() / 10000)}`;
+
+  if (state.seenMessages.has(dedupKey)) {
+    logHw('Duplicate report — not creating new request', 'sys');
+    toast('Duplicate signal ignored', 'info');
+    return;
+  }
+  state.seenMessages.add(dedupKey);
+
+  const deviceId = isSimulated
+    ? ('SIM-' + Math.random().toString(36).slice(2,5).toUpperCase())
+    : 'AWARE-HW01';
+
+  const req = createRequest({ category: cat, deviceId, isSimulated, fwReportId: fwReportId || 0 });
+  state.requests[req.id] = req;
+
+  // Update our mirror of device state
+  state.fwStatus   = FW_STATUS.QUEUED;
+  state.fwReportId = fwReportId || state.fwReportId + 1;
+
+  // Send 'R' to device — firmware accepts this when status == QUEUED → moves to RECEIVED
+  // Yellow LED turns on (firmware: YELLOW_LED = status >= RECEIVED, so after R)
+  sendToDevice('R');
+  logHw('→ Sent R (report received)', 'out');
+  state.fwStatus = FW_STATUS.RECEIVED;
+  req.fwStatus   = FW_STATUS.RECEIVED;
+
+  // Show Yellow in dashboard LED display (mirrors firmware YELLOW_LED = HIGH)
+  setLeds(true, false, false);
+
+  logHw(`New request ${req.id} (${cat})${fwReportId ? ' FW#' + fwReportId : ''}`, 'sys');
+  toast(`New request: ${req.id} — ${cat}`, 'info');
+
+  persist();
+  selectRequest(req.id);
+  renderList();
+}
+
+function handleStatusCheck() {
+  // Mirrors firmware checkStatus() — we reflect status back via LEDs
+  // Firmware: Yellow = RECEIVED+, Green = ACKNOWLEDGED+, Red blinks if overdue
+  const active = Object.values(state.requests)
+    .filter(r => r.status !== 'resolved')
+    .sort((a,b) => b.createdAt - a.createdAt)[0];
+  if (active) {
+    const fw = active.fwStatus || FW_STATUS.QUEUED;
+    const yellow = fw === FW_STATUS.RECEIVED || fw === FW_STATUS.QUEUED;
+    const green  = fw === FW_STATUS.ACKNOWLEDGED || fw === FW_STATUS.HELP_REPORTED || fw === FW_STATUS.VERIFIED;
+    const red    = isOverdue(active);
+    setLeds(yellow, green, red);
+    setTimeout(() => setLeds(false, false, false), 2500);
+    logHw(`Status check: ${active.id} fwStatus=${fw}`, 'sys');
+    toast(`${active.id}: ${statusLabel(active.status)}`, 'info');
+  } else {
+    setLeds(false, true, false); // All clear
+    setTimeout(() => setLeds(false, false, false), 1500);
+    toast('No active requests', 'info');
+  }
+}
+
+function handleArrivedReport(isSimulated) {
+  // 3-click: firmware confirmAssistance() — user at scene reports help arrived.
+  // Firmware sets status = HELP_REPORTED and prints "ASSISTANCE ARRIVAL REPORTED".
+  // The SOC should now send 'V' to verify (when operator confirms via dashboard).
+  // We record the arrival signal but do NOT auto-advance to delivered —
+  // that requires deliberate operator action.
+  const active = Object.values(state.requests)
+    .filter(r => r.status !== 'resolved' && r.status !== 'delivered' && r.status !== 'verified')
+    .sort((a,b) => b.createdAt - a.createdAt)[0];
+  if (active) {
+    active.fwStatus  = FW_STATUS.HELP_REPORTED;
+    active.updatedAt = Date.now();
+    active.history.push({
+      ts:    Date.now(),
+      event: 'help-reported',
+      msg:   'Device signal: user reports assistance has arrived (3-click). Awaiting operator verification.',
+      actor: isSimulated ? 'Simulation' : 'Device'
+    });
+    persist();
+    logHw(`Arrival signal for ${active.id} — fwStatus → HELP_REPORTED`, 'sys');
+    toast(`${active.id}: Arrival reported — verify to send V`, 'success');
+    renderDetail();
+    renderList();
+  } else {
+    toast('No open request to record arrival for', 'info');
+  }
+}
+
+function handleFullReset(isSimulated) {
+  // 6-click: firmware fullReset() — clears device state entirely.
+  // We mirror: reset fwStatus, category, note it in history.
+  // We do NOT delete SOC requests — they must remain tracked for accountability.
+  state.fwStatus       = FW_STATUS.NO_REPORT;
+  state.currentCategory = 0;
+  updateSimCategoryLabel();
+
+  const active = Object.values(state.requests)
+    .filter(r => r.status !== 'resolved')
+    .sort((a,b) => b.createdAt - a.createdAt)[0];
+  if (active) {
+    active.fwStatus  = FW_STATUS.NO_REPORT;
+    active.updatedAt = Date.now();
+    active.history.push({
+      ts: Date.now(), event: 'device-reset',
+      msg: 'Device full reset (6-click). Device state cleared. SOC record preserved.',
+      actor: isSimulated ? 'Simulation' : 'Device'
+    });
+  }
+
+  setLeds(false, false, true);
+  setTimeout(() => setLeds(false, false, false), 1500);
+  logHw('Device FULL RESET — fwStatus cleared, category reset to MEDICAL HELP', 'sys');
+  toast('Device reset — SOC records preserved', 'info');
+  persist();
+  renderDetail();
+  renderList();
+}
+
+// ── SIMULATION ENTRY POINTS ────────────────────────────────────────
+function simClick(n) {
+  logHw(`[SIM] Button: ${n} click(s)`, 'in');
+  handleDeviceEvent(n, CATEGORIES[state.currentCategory], true);
+}
+
+function simulateNewRequest() {
+  simClick(1);
+}
+
+// Helper: advance firmware status one step
+function advanceFwStatus(fw) {
+  const order = [
+    FW_STATUS.NO_REPORT, FW_STATUS.QUEUED, FW_STATUS.RECEIVED,
+    FW_STATUS.ACKNOWLEDGED, FW_STATUS.HELP_REPORTED, FW_STATUS.VERIFIED
+  ];
+  const idx = order.indexOf(fw);
+  return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : fw;
+}
+
+// Update category label in simulate panel
+function updateSimCategoryLabel() {
+  const el = document.getElementById('sim-category-label');
+  if (el) el.textContent = CATEGORIES[state.currentCategory];
+}
+
+// ── LED SIMULATOR ─────────────────────────────────────────────────
+function setLeds(yellow, green, red) {
+  document.getElementById('led-yellow').className = 'led' + (yellow ? ' on-yellow' : '');
+  document.getElementById('led-green').className  = 'led' + (green  ? ' on-green'  : '');
+  document.getElementById('led-red').className    = 'led' + (red    ? ' on-red'    : '');
+}
+
+// ── HW LOG ─────────────────────────────────────────────────────────
+function logHw(msg, cls = 'sys') {
+  const log  = document.getElementById('hw-log');
+  const line = document.createElement('div');
+  line.className = `log-line ${cls}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  // Keep log bounded
+  while (log.children.length > 200) log.removeChild(log.firstChild);
+}
+
+// ── RESPONDER MODAL ────────────────────────────────────────────────
+function openResponderModal() {
+  const sel = document.getElementById('resp-req-select');
+  sel.innerHTML = '';
+  const active = Object.values(state.requests)
+    .filter(r => r.status !== 'resolved')
+    .sort((a,b) => b.createdAt - a.createdAt);
+  if (!active.length) {
+    sel.innerHTML = '<option value="">No active requests</option>';
+  } else {
+    active.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = `${r.id} — ${r.category} — ${r.location.slice(0,25)}`;
+      if (r.id === state.selectedId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  document.getElementById('resp-notes').value = '';
+  document.getElementById('responder-modal').classList.add('open');
+}
+
+function closeResponderModal() {
+  document.getElementById('responder-modal').classList.remove('open');
+}
+
+function submitResponderUpdate() {
+  const reqId  = document.getElementById('resp-req-select').value;
+  const type   = document.getElementById('resp-update-type').value;
+  const notes  = document.getElementById('resp-notes').value.trim();
+  const req    = state.requests[reqId];
+  if (!req) { toast('Select a request', 'error'); return; }
+
+  const apply = () => {
+    if (type === 'note') {
+      if (!notes) { toast('Enter a note', 'error'); return; }
+      req.history.push({ ts: Date.now(), event: 'field-note', msg: notes, actor: 'Responder' });
+      req.notes.push({ ts: Date.now(), text: notes, actor: 'Responder' });
+    } else {
+      advanceStatus(req, type, notes || statusLabel(type), 'Responder');
+      if (type === 'delivered') {
+        sendToDevice(FIRMWARE_PROTOCOL.outgoing.verified);
+        setLeds(false, true, false);
+        setTimeout(() => setLeds(false, false, false), 2000);
+      } else if (type === 'in-contact') {
+        sendToDevice(FIRMWARE_PROTOCOL.outgoing.acknowledged);
+      }
+    }
+    req.updatedAt = Date.now();
+    persist();
+    renderDetail();
+    renderList();
+    closeResponderModal();
+    toast(`${req.id}: ${statusLabel(type)} recorded`, 'success');
+  };
+
+  if (!state.isOnline) {
+    state.offlineQueue.push({ reqId, action: type, note: notes, ts: Date.now(), actor: 'Responder' });
+    showQueueIndicator();
+    persist();
+    closeResponderModal();
+    toast('Update queued — offline mode', 'warn');
+  } else {
+    apply();
+  }
+}
+
+// ── OFFLINE / SYNC ─────────────────────────────────────────────────
+function showQueueIndicator() {
+  const ind = document.getElementById('queue-indicator');
+  document.getElementById('queue-count').textContent = state.offlineQueue.length;
+  ind.classList.toggle('show', state.offlineQueue.length > 0);
+}
+
+function syncQueue() {
+  if (!state.offlineQueue.length) return;
+  let applied = 0, conflicts = 0;
+  state.offlineQueue.forEach(item => {
+    const req = state.requests[item.reqId];
+    if (!req) return;
+    // Conflict: if req status already moved past this action
+    const curIdx  = STATUS_ORDER.indexOf(req.status);
+    const itemIdx = STATUS_ORDER.indexOf(item.action);
+    if (curIdx > itemIdx && item.action !== 'note') {
+      // Preserve for review
+      req.history.push({
+        ts: item.ts,
+        event: 'sync-conflict',
+        msg: `[Sync conflict] Queued "${statusLabel(item.action)}" — current status is "${statusLabel(req.status)}". Preserved for review.`,
+        actor: item.actor || 'Offline'
+      });
+      conflicts++;
+    } else if (item.action === 'note') {
+      req.history.push({ ts: item.ts, event: 'field-note', msg: item.note, actor: item.actor || 'Responder' });
+      req.notes.push({ ts: item.ts, text: item.note, actor: item.actor || 'Responder' });
+      applied++;
+    } else {
+      advanceStatus(req, item.action, item.note, item.actor || 'Responder');
+      applied++;
+    }
+    req.updatedAt = Date.now();
+  });
+
+  state.offlineQueue = [];
+  persist();
+  showQueueIndicator();
+  renderList();
+  renderDetail();
+  let msg = `Synced ${applied} update(s)`;
+  if (conflicts) msg += `, ${conflicts} conflict(s) preserved for review`;
+  toast(msg, conflicts ? 'warn' : 'success');
+}
+
+// Simulate offline toggle for demo
+function toggleHwPanel() {
+  if (state.mode === 'sim') {
+    // Toggle simulated offline
+    state.isOnline = !state.isOnline;
+    document.getElementById('offline-badge').classList.toggle('show', !state.isOnline);
+    toast(state.isOnline ? 'Back online' : 'Simulating offline mode', state.isOnline ? 'success' : 'warn');
+    if (state.isOnline) syncQueue();
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ── TOAST ───────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const c  = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type === 'error' ? 'error' : type === 'success' ? 'success' : ''}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, 3200);
+}
+
+// ── WALKTHROUGH ─────────────────────────────────────────────────────
+const WALK_STEPS = [
+  {
+    title: 'Step 1 of 8 — Trigger Request',
+    text: 'Press "1 Click — Submit Report" in the Hardware panel (or use your physical wearable). A new request appears in the list and on the map.'
+  },
+  {
+    title: 'Step 2 of 8 — Request Appears in SOC',
+    text: 'The request shows as "Received" with a red marker on the map. Active count and unassigned count both update. The summary bar reflects live totals.'
+  },
+  {
+    title: 'Step 3 of 8 — Acknowledge & Assign',
+    text: 'Select the request. Click "Acknowledge Receipt", then choose Team Alpha and click "Assign Team". Status moves to Assigned. Yellow LED lights on the device.'
+  },
+  {
+    title: 'Step 4 of 8 — Record Contact',
+    text: 'Open the 📱 Responder view. Select the request, choose "Contact Attempted", add a note, and submit. The timeline updates with the field entry.'
+  },
+  {
+    title: 'Step 5 of 8 — Confirm Assistance',
+    text: 'Back in the detail panel, click "Confirm Assistance Delivered". The status advances to Delivered and a V command is sent to the device (Green LED).'
+  },
+  {
+    title: 'Step 6 of 8 — Resolve & Overdue Request',
+    text: 'Click "Resolve Case". The count updates. Now observe the second demo request — if its deadline has passed, it shows ⚠ OVERDUE in red.'
+  },
+  {
+    title: 'Step 7 of 8 — Offline Operation',
+    text: 'Click the hardware pill in the top bar to simulate going offline. Submit a responder update. It queues. Then click the amber queue indicator to sync — conflicts are preserved for review.'
+  },
+  {
+    title: 'Step 8 of 8 — Hardware vs Simulation',
+    text: 'LIVE HARDWARE: 1-click creates requests, 3-click records arrival, 6-click resets. Commands R/A/V drive LEDs. SIMULATED: All buttons in hardware panel. PLANNED: LoRa radio, GPS, battery readout.'
+  }
+];
+
+function openWalkthrough() {
+  state.walkStep = 0;
+  renderWtStep();
+  document.getElementById('walkthrough').classList.remove('hidden');
+}
+function closeWalkthrough() { document.getElementById('walkthrough').classList.add('hidden'); }
+function wtNext() { state.walkStep = Math.min(state.walkStep + 1, WALK_STEPS.length - 1); renderWtStep(); }
+function wtPrev() { state.walkStep = Math.max(state.walkStep - 1, 0); renderWtStep(); }
+function renderWtStep() {
+  const step = WALK_STEPS[state.walkStep];
+  document.getElementById('wt-step-label').textContent = step.title;
+  document.getElementById('wt-text').textContent       = step.text;
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+
+// ── OVERDUE CHECKER ───────────────────────────────────────────────
+function checkOverdue() {
+  const hadOverdue = document.getElementById('cnt-overdue').textContent;
+  updateCounts();
+  if (state.selectedId) renderDetail();
+  renderMap();
+}
+
+// ── SEED DEMO DATA ────────────────────────────────────────────────
+function seedDemoData() {
+  // Don't re-seed if we have data
+  if (Object.keys(state.requests).length > 0) return;
+
+  // Overdue SEARCH AND RESCUE — mirrors firmware: RECEIVED state, deadline passed
+  const r1 = createRequest({ category: 'SEARCH AND RESCUE', isSimulated: true,
+    location: 'Bahía Azul — Reef Zone', mapX: 160, mapY: 210 });
+  r1.deadline  = Date.now() - 3 * 60000; // already overdue
+  r1.fwStatus  = FW_STATUS.RECEIVED; // R already sent, awaiting A
+  r1.history.push({ ts: r1.createdAt + 10000,  event: 'acknowledged', msg: 'R sent to device — RECEIVED', actor: 'SOC' });
+  r1.history.push({ ts: r1.createdAt + 60000,  event: 'assigned',     msg: 'Assigned to Team Bravo', actor: 'Operator' });
+  r1.team   = 'Bravo';
+  r1.status = 'assigned';
+  state.requests[r1.id] = r1;
+
+  // MEDICAL HELP — A sent, in contact, green LED
+  const r2 = createRequest({ category: 'MEDICAL HELP', isSimulated: true,
+    location: 'Isla Colón — North Shore', mapX: 440, mapY: 130 });
+  r2.fwStatus = FW_STATUS.ACKNOWLEDGED; // A already sent → Green LED on firmware
+  r2.history.push({ ts: r2.createdAt + 10000,  event: 'acknowledged',       msg: 'R sent to device', actor: 'SOC' });
+  r2.history.push({ ts: r2.createdAt + 30000,  event: 'assigned',           msg: 'Assigned to Team Alpha', actor: 'Operator' });
+  r2.history.push({ ts: r2.createdAt + 90000,  event: 'contact-attempted',  msg: 'Radio contact attempted', actor: 'Team Alpha' });
+  r2.history.push({ ts: r2.createdAt + 150000, event: 'in-contact',         msg: 'Patient reached — stable condition. A sent to device.', actor: 'Team Alpha' });
+  r2.team   = 'Alpha';
+  r2.status = 'in-contact';
+  state.requests[r2.id] = r2;
+
+  // FOOD AND WATER — resolved
+  const r3 = createRequest({ category: 'FOOD AND WATER', isSimulated: true,
+    location: 'Changuinola — Riverside', mapX: 580, mapY: 200 });
+  r3.fwStatus = FW_STATUS.VERIFIED;
+  r3.history.push({ ts: r3.createdAt + 10000,  event: 'acknowledged', msg: 'R sent to device', actor: 'SOC' });
+  r3.history.push({ ts: r3.createdAt + 60000,  event: 'assigned',     msg: 'Assigned to Team Charlie', actor: 'Operator' });
+  r3.history.push({ ts: r3.createdAt + 200000, event: 'help-reported', msg: '3-click: user reported arrival', actor: 'Device' });
+  r3.history.push({ ts: r3.createdAt + 250000, event: 'delivered',    msg: 'V sent to device — VERIFIED. Food and water delivered.', actor: 'Team Charlie' });
+  r3.history.push({ ts: r3.createdAt + 300000, event: 'resolved',     msg: 'Case resolved', actor: 'Operator' });
+  r3.team   = 'Charlie';
+  r3.status = 'resolved';
+  state.requests[r3.id] = r3;
+
+  persist();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+function init() {
+  restore();
+  seedDemoData();
+  updateHwUi(false);
+  updateSimCategoryLabel();
+  logHw('AWARE SOC initialized', 'sys');
+  logHw('Protocol: 9600 baud | R→RECEIVED  A→ACKNOWLEDGED  V→VERIFIED  X→RESET', 'sys');
+  logHw('Device LED: Yellow=RECEIVED+  Green=ACKNOWLEDGED+  Red blinks=OVERDUE', 'sys');
+  logHw('Hardware mode: use Chrome/Edge (Web Serial) or run serial-bridge.js', 'sys');
+  renderList();
+  updateClock();
+  showQueueIndicator();
+  setInterval(updateClock, 1000);
+  setInterval(checkOverdue, 15000);
+  window.addEventListener('online',  () => { state.isOnline = true;  document.getElementById('offline-badge').classList.remove('show'); toast('Connection restored', 'success'); syncQueue(); });
+  window.addEventListener('offline', () => { state.isOnline = false; document.getElementById('offline-badge').classList.add('show');    toast('Connection lost — updates will be queued', 'warn'); });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
