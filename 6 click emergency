@@ -1,0 +1,458 @@
+
+/*
+  AWARE MINI - Single Button Disaster Reporting
+  Arduino Uno R3 - NO LCD
+
+  1 click  = Submit report
+  2 clicks = Check status
+  3 clicks = Report assistance arrived
+  4 clicks = Cycle emergency category
+  6 clicks = FULL RESET
+
+  Button: D2
+
+  LEDs:
+    Yellow: D11
+    Green:  D12
+    Red:    D13
+
+  Buzzer: A2
+
+  Serial Monitor: 9600 baud
+
+  Demo commands:
+    R = System received report
+    A = Responder acknowledged
+    V = Assistance verified
+    X = Reset
+*/
+
+const byte BUTTON = 2;
+
+const byte YELLOW_LED = 11;
+const byte GREEN_LED = 12;
+const byte RED_LED = 13;
+const byte BUZZER = A2;
+
+// Timing
+const unsigned long DEBOUNCE_MS = 35;
+const unsigned long CLICK_GAP_MS = 1000;
+const unsigned long OVERDUE_MS = 30000;
+
+// Emergency categories
+const char* categories[] = {
+  "MEDICAL HELP",
+  "SEARCH AND RESCUE",
+  "FOOD AND WATER",
+  "SHELTER",
+  "BLOCKED ROAD",
+  "OTHER EMERGENCY"
+};
+
+const byte CATEGORY_COUNT = 6;
+byte selectedCategory = 0;
+
+// Report lifecycle
+enum ReportStatus {
+  NO_REPORT,
+  QUEUED,
+  RECEIVED,
+  ACKNOWLEDGED,
+  HELP_REPORTED,
+  VERIFIED
+};
+
+ReportStatus status = NO_REPORT;
+
+unsigned int reportID = 0;
+byte reportCategory = 0;
+unsigned long submittedAt = 0;
+
+// Button debouncing
+bool lastRawState = HIGH;
+bool stableState = HIGH;
+
+unsigned long lastDebounceTime = 0;
+unsigned long lastClickTime = 0;
+
+byte clickCount = 0;
+
+// ==========================================
+// STATUS FUNCTIONS
+// ==========================================
+
+const char* statusName() {
+  switch (status) {
+    case NO_REPORT:
+      return "NO REPORT";
+    case QUEUED:
+      return "QUEUED LOCALLY";
+    case RECEIVED:
+      return "RECEIVED BY SYSTEM";
+    case ACKNOWLEDGED:
+      return "RESPONDER ACKNOWLEDGED";
+    case HELP_REPORTED:
+      return "HELP REPORTED BY USER";
+    case VERIFIED:
+      return "ASSISTANCE VERIFIED";
+  }
+
+  return "UNKNOWN";
+}
+
+bool isOverdue() {
+  if (status == NO_REPORT ||
+      status == HELP_REPORTED ||
+      status == VERIFIED) {
+    return false;
+  }
+
+  return millis() - submittedAt >= OVERDUE_MS;
+}
+
+void printCategory() {
+  Serial.println();
+
+  Serial.print("SELECTED CATEGORY: ");
+  Serial.println(categories[selectedCategory]);
+}
+
+// ==========================================
+// ONE CLICK - SUBMIT REPORT
+// ==========================================
+
+void submitReport() {
+  if (status != NO_REPORT && status != VERIFIED) {
+    Serial.println("ACTIVE REPORT EXISTS");
+    Serial.println("Use 2 clicks to check status.");
+    return;
+  }
+
+  reportID++;
+  reportCategory = selectedCategory;
+  submittedAt = millis();
+  status = QUEUED;
+
+  Serial.println();
+  Serial.println("==========================");
+  Serial.println("NEW AWARE REPORT");
+
+  Serial.print("Report ID: ");
+  Serial.println(reportID);
+
+  Serial.print("Emergency: ");
+  Serial.println(categories[reportCategory]);
+
+  Serial.println("Status: QUEUED LOCALLY");
+  Serial.println("==========================");
+
+  tone(BUZZER, 1200, 100);
+}
+
+// ==========================================
+// TWO CLICKS - CHECK STATUS
+// ==========================================
+
+void checkStatus() {
+  Serial.println();
+  Serial.println("====== REPORT STATUS ======");
+
+  if (status == NO_REPORT) {
+    Serial.println("No active report.");
+  } else {
+    Serial.print("Report ID: ");
+    Serial.println(reportID);
+
+    Serial.print("Emergency: ");
+    Serial.println(categories[reportCategory]);
+
+    Serial.print("Status: ");
+    Serial.println(statusName());
+
+    if (isOverdue()) {
+      Serial.println("WARNING: REPORT OVERDUE");
+    }
+  }
+
+  Serial.println("===========================");
+}
+
+// ==========================================
+// THREE CLICKS - CONFIRM ASSISTANCE
+// ==========================================
+
+void confirmAssistance() {
+  if (status == NO_REPORT || status == VERIFIED) {
+    Serial.println("No open report to confirm.");
+    return;
+  }
+
+  status = HELP_REPORTED;
+
+  Serial.println();
+  Serial.println("ASSISTANCE ARRIVAL REPORTED");
+  Serial.println("Awaiting external verification.");
+
+  tone(BUZZER, 1500, 120);
+}
+
+// ==========================================
+// FOUR CLICKS - CYCLE CATEGORY
+// ==========================================
+
+void cycleCategory() {
+  selectedCategory =
+    (selectedCategory + 1) % CATEGORY_COUNT;
+
+  printCategory();
+
+  tone(BUZZER, 900, 70);
+}
+
+// ==========================================
+// SIX CLICKS - FULL RESET
+// ==========================================
+
+void fullReset() {
+  // Silence buzzer
+  noTone(BUZZER);
+  digitalWrite(BUZZER, LOW);
+
+  // Turn off all LEDs
+  digitalWrite(YELLOW_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+
+  // Clear active report
+  status = NO_REPORT;
+  reportID = 0;
+  reportCategory = 0;
+  submittedAt = 0;
+
+  // Restore first category
+  selectedCategory = 0;
+
+  // Clear click sequence
+  clickCount = 0;
+  lastClickTime = 0;
+
+  Serial.println();
+  Serial.println("==========================");
+  Serial.println("    AWARE FULL RESET");
+  Serial.println("==========================");
+  Serial.println("All LEDs OFF");
+  Serial.println("Buzzer OFF");
+  Serial.println("Active report cleared");
+  Serial.println("Report ID reset to 0");
+  Serial.println("Category reset to MEDICAL HELP");
+  Serial.println("System ready for new reports");
+  Serial.println("==========================");
+
+  printCategory();
+}
+
+// ==========================================
+// MULTI-CLICK DETECTION
+// ==========================================
+
+void executeClicks(byte count) {
+  Serial.print("Detected clicks: ");
+  Serial.println(count);
+
+  switch (count) {
+    case 1:
+      submitReport();
+      break;
+
+    case 2:
+      checkStatus();
+      break;
+
+    case 3:
+      confirmAssistance();
+      break;
+
+    case 4:
+      cycleCategory();
+      break;
+
+    case 6:
+      fullReset();
+      break;
+
+    default:
+      Serial.println("No action assigned.");
+      break;
+  }
+}
+
+void updateButton() {
+  bool reading = digitalRead(BUTTON);
+
+  if (reading != lastRawState) {
+    lastDebounceTime = millis();
+    lastRawState = reading;
+  }
+
+  if (millis() - lastDebounceTime >= DEBOUNCE_MS) {
+    if (reading != stableState) {
+      stableState = reading;
+
+      if (stableState == LOW) {
+        if (clickCount < 7) {
+          clickCount++;
+        }
+
+        lastClickTime = millis();
+      }
+    }
+  }
+
+  if (clickCount > 0 &&
+      stableState == HIGH &&
+      millis() - lastClickTime >= CLICK_GAP_MS) {
+
+    byte completedClicks = clickCount;
+    clickCount = 0;
+
+    executeClicks(completedClicks);
+  }
+}
+
+// ==========================================
+// STATUS LEDs
+// ==========================================
+
+void updateIndicators() {
+  digitalWrite(
+    YELLOW_LED,
+    status >= RECEIVED ? HIGH : LOW
+  );
+
+  digitalWrite(
+    GREEN_LED,
+    status >= ACKNOWLEDGED ? HIGH : LOW
+  );
+
+  if (isOverdue()) {
+    digitalWrite(
+      RED_LED,
+      (millis() / 400) % 2 == 0 ? HIGH : LOW
+    );
+  } else {
+    digitalWrite(RED_LED, LOW);
+  }
+}
+
+// ==========================================
+// OVERDUE BUZZER
+// ==========================================
+
+void updateOverdueAlert() {
+  static bool previousOverdue = false;
+
+  bool currentOverdue = isOverdue();
+
+  if (currentOverdue && !previousOverdue) {
+    Serial.println();
+    Serial.println("!!! AWARE OVERDUE ALERT !!!");
+
+    tone(BUZZER, 2000, 400);
+  }
+
+  previousOverdue = currentOverdue;
+}
+
+// ==========================================
+// SERIAL DEMO COMMANDS
+// ==========================================
+
+void handleSerial() {
+  if (!Serial.available()) {
+    return;
+  }
+
+  char command = Serial.read();
+
+  switch (command) {
+    case 'R':
+    case 'r':
+      if (status == QUEUED) {
+        status = RECEIVED;
+        Serial.println("SYSTEM RECEIPT RECORDED");
+      }
+      break;
+
+    case 'A':
+    case 'a':
+      if (status == RECEIVED) {
+        status = ACKNOWLEDGED;
+        Serial.println("RESPONDER ACKNOWLEDGED");
+      }
+      break;
+
+    case 'V':
+    case 'v':
+      if (status == HELP_REPORTED) {
+        status = VERIFIED;
+        Serial.println("ASSISTANCE VERIFIED");
+      }
+      break;
+
+    case 'X':
+    case 'x':
+      fullReset();
+      break;
+  }
+}
+
+// ==========================================
+// SETUP
+// ==========================================
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(BUTTON, INPUT_PULLUP);
+
+  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+
+  pinMode(BUZZER, OUTPUT);
+
+  digitalWrite(YELLOW_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+
+  Serial.println();
+  Serial.println("==========================");
+  Serial.println("        AWARE MINI");
+  Serial.println("==========================");
+
+  Serial.println("1 CLICK  = Submit report");
+  Serial.println("2 CLICKS = Check status");
+  Serial.println("3 CLICKS = Assistance arrived");
+  Serial.println("4 CLICKS = Cycle emergency");
+  Serial.println("6 CLICKS = FULL RESET");
+
+  Serial.println();
+  Serial.println("Serial demo commands:");
+  Serial.println("R = Received");
+  Serial.println("A = Acknowledged");
+  Serial.println("V = Verified");
+  Serial.println("X = Reset");
+
+  printCategory();
+}
+
+// ==========================================
+// MAIN LOOP
+// ==========================================
+
+void loop() {
+  updateButton();
+  handleSerial();
+  updateIndicators();
+  updateOverdueAlert();
+}
