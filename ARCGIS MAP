@@ -1,0 +1,4 @@
+<!-- Add script to the <head> of your page to load the embeddable map component -->
+<script type="module" src="https://js.arcgis.com/5.1/embeddable-components/"></script>
+<!-- Add custom element to <body> of your page -->
+ <arcgis-embedded-map style="height:600px;width:700px;" item-id="dd1f35029d594b229cfa7f9fbe76df53" theme="light" time-zone-label-enabled center="0,1999999.9999921245"scale="147914381.897889" portal-url="https://uscssi.maps.arcgis.com"></arcgis-embedded-map>
